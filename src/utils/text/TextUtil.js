@@ -6,7 +6,11 @@ var TextUtil = {
         return value.charAt(0).toUpperCase() + value.slice(1)
     },
     propercase(value) {
-        return this.replace(/\w\S*/g, value.charAt(0).toUpperCase() + value.substr(1).toLowerCase());
+        if(value.length > 2){
+            return value.replace(/\w\S*/g, value.charAt(0).toLowerCase() + value.substr(1));
+        }else{
+            return value.toLowerCase();
+        }
     },
 }
 
