@@ -15,11 +15,12 @@
           <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full mt-3" type="button" id="convertBtn" name="convertBtn" @click="executeConvertion">Convert</button>
         </div>
       </div>
-      <div class="ml-6 flex-grow ">
+      <div class="ml-6 flex-grow overflow-y-scroll">
           <h3>Result : </h3>
+          <img src="../assets/icons/copy.svg">
           <div class="flex flex-row content-center items-center mb-3" v-for="(item, index) in classes" v-bind:key="index">
             <input type="checkbox" value="false" class="mr-3">
-            <div class="flex-grow border border-gray bg-gray-100 rounded-lg p-2 ">
+            <div class="min-w-full border border-gray bg-gray-100 rounded-lg p-2 overflow-auto">
               <pre>{{ showAsModel(item) }}</pre>
             </div>
           </div>
@@ -29,7 +30,6 @@
 </template>
 
 <script>
-
 import TextUtil from '../utils/text/TextUtil.js'
 export default {
   name: 'MainComponent',
@@ -72,7 +72,7 @@ export default {
     convertJsonToClass(parsedJson){
         let keys = this.getKeys(parsedJson)
         keys.forEach(key => {
-          if(typeof parsedJson[key] == 'object' && !Array.isArray(parsedJson[key])){
+          if(typeof parsedJson[key] == 'object' && !Array.isArray(parsedJson[key]) && parsedJson[key]!= null){
             this.classes.push({
               className:TextUtil.capital(key),
               properties:this.createProperty(parsedJson[key]),
@@ -91,23 +91,33 @@ export default {
     },
     createProperty(json){
       let properties = [];
-      let keys = this.getKeys(json)
-      keys.forEach(key=>{
-        let propertyKey = TextUtil.propercase(key.toString());
-        let propertyValue = this.typeMapper(key, json[key]);
-        let property = {
-          name:propertyKey,
-          type:propertyValue,
-        };
-        properties.push(property);
-        if(typeof json[key] == 'object' && !Array.isArray(json[key])){
-          this.convertJsonToClass(json);
-        }else if(Array.isArray(json[key]) && json[key].length > 0){
-          if(typeof json[key][0] == 'object'){
-            this.convertArrayObjectToClass(key, json[key]);
+      if(json!=null){
+        let property = {};
+        let keys = this.getKeys(json)
+        keys.forEach(key=>{
+          let propertyKey = TextUtil.propercase(key.toString());
+          let propertyValue = this.typeMapper(key, json[key]);
+          let isList = typeof json[key] == 'object' && Array.isArray(json[key])
+          let isPrimitive = isList ? (typeof json[key][0] == 'object') : false
+          let childType = this.listTypeMapper(key, json[key])
+          property = {
+            name:propertyKey,
+            type:propertyValue,
+            originalKey:key,
+            isList:isList,
+            isPrimitive:isPrimitive,
+            childType:childType
+          };
+          properties.push(property);
+          if(typeof json[key] == 'object' && !Array.isArray(json[key]) && json[key] != null){
+            this.convertJsonToClass(json);
+          }else if(Array.isArray(json[key]) && json[key].length > 0){
+            if(typeof json[key][0] == 'object'){
+              this.convertArrayObjectToClass(key, json[key]);
+            }
           }
-        }
-      });
+        });
+      }
       return properties;
     },
     typeMapper(key, value){
@@ -123,22 +133,56 @@ export default {
             let firstArray = value[0];
             let childrenType = (value.length > 0) ? this.typeMapper(key, firstArray): 'Null'
             return `List<${childrenType}>`;
+          }else if(value == null){
+            return 'Null'
           }
           return TextUtil.capital(key);
         default:
           return 'Null';
       }
     },
+    listTypeMapper(key, value){
+      if(Array.isArray(value)){
+        let firstArray = value[0];
+        let childType = (value.length > 0) ? this.typeMapper(key, firstArray): 'Null'
+        return childType;
+      }else{
+        return null
+      }
+    },
     showAsModel(item){
       let className = item.className
       let properties = ""
       let constructors = ""
+      let fromJson = ""
+      let toJson = ""
       item.properties.forEach(function(property, index){
           properties += `\tfinal ${property.type} ${property.name};\n`
           constructors += `\t\trequired this.${property.name},`
-          if(((index+1) != item.properties.length))constructors += `\n`;
+          
+          /// TODO : add a logic to add list / non-primitive object adapter
+          if(item.isList){
+            if(!item.isPrimitive){
+              fromJson += `\t\t${property.name} : List<${property.childType}>.from(json['${property.originalKey}'].map((json)=>${property.childType}.fromJson(json))),\n`
+              toJson += `\t\tdata['${property.originalKey}'] = ${property.name}.map((model) => model.toJson()).toList();`
+            }else{
+              fromJson += `\t\t${property.name} : json['${property.originalKey}'].cast<${property.childType}>(),\n`
+              toJson += `\t\tdata['${property.originalKey}'] = ${property.name};`
+            }
+          }else{
+            fromJson += `\t\t${property.name} : json['${property.originalKey}'],\n`
+            toJson += `\t\tdata['${property.originalKey}'] = ${property.name};`
+          }
+          if(((index+1) != item.properties.length)){
+            constructors += `\n`
+            toJson += `\n`
+          }
       });
-      return `class ${className} {\n${properties}\n\t${className}({\n${constructors}\n\t});\n}`;
+      let fromJsonTemplate = `\n\tfactory ${className}.fromJson(Map<String, dynamic> json) => ${className}(\n${fromJson}\t);\n`
+      let toJsonTemplate = `\tMap<String, dynamic> toJson() {\n\t\tfinal Map<String, dynamic> data = <String, dynamic>{};\n${toJson}\n\t\treturn data;\n\t}`
+      let constructorTemplate = `${properties}\n\t${className}({\n${constructors}\n\t});`
+      let classTemplate = `class ${className} {\n${constructorTemplate}\n${fromJsonTemplate}\n${toJsonTemplate}\n}`
+      return classTemplate;
     },
     // prettyFormat() {
     //     // reset error
