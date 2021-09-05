@@ -17,10 +17,10 @@
       </div>
       <div class="ml-6 flex-grow overflow-y-scroll">
           <h3>Result : </h3>
-          <img src="../assets/icons/copy.svg">
           <div class="flex flex-row content-center items-center mb-3" v-for="(item, index) in classes" v-bind:key="index">
             <input type="checkbox" value="false" class="mr-3">
             <div class="min-w-full border border-gray bg-gray-100 rounded-lg p-2 overflow-auto">
+              <button><i class="feather icon-copy"></i> copy</button>
               <pre>{{ showAsModel(item) }}</pre>
             </div>
           </div>
@@ -55,6 +55,7 @@ export default {
         return keys;
     },
     executeConvertion(){
+      this.classes = [];
       var str = JSON.stringify(this.jsonInput);
       let jsonStatus = this.checkJson(str)
       if(jsonStatus)this.createClass();
