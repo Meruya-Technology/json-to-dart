@@ -17,10 +17,17 @@
       </div>
       <div class="ml-6 flex-grow overflow-y-scroll">
           <h3>Result : </h3>
-          <div class="flex flex-row content-center items-center mb-3" v-for="(item, index) in classes" v-bind:key="index">
-            <input type="checkbox" value="false" class="mr-3">
-            <div class="min-w-full border border-gray bg-gray-100 rounded-lg p-2 overflow-auto">
-              <button><i class="feather icon-copy"></i> copy</button>
+          <div class="mb-3" v-for="(item, index) in classes" v-bind:key="index">
+            <div class="flex flex-col border border-gray bg-gray-100 rounded-lg p-3 overflow-auto">
+              <div class="flex flex-row content-center items-center">
+                <input type="checkbox" value="false" class="mr-3">
+                <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded-full text-xs mr-2" type="button" @click="copyClass(item)"><i class="feather icon-copy text-xs"></i> copy</button>
+                <button class="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded-full text-xs mr-2" type="button" @click="download(item)"><i class="feather icon-download text-xs"></i> Download</button>
+                <p class="flex flex-grow">{{item.className}}.dart</p>
+              </div>
+              <div class="flex flex-grow">
+                <hr class="my-2 min-w-full">
+              </div>
               <pre>{{ showAsModel(item) }}</pre>
             </div>
           </div>
@@ -39,6 +46,7 @@ export default {
       jsonerror: "",
       firstClassName:"",
       classes:[],
+      loopIndex:0,
     }
   },
   methods:{
@@ -99,7 +107,7 @@ export default {
           let propertyKey = TextUtil.propercase(key.toString());
           let propertyValue = this.typeMapper(key, json[key]);
           let isList = typeof json[key] == 'object' && Array.isArray(json[key])
-          let isPrimitive = isList ? (typeof json[key][0] == 'object') : false
+          let isPrimitive = isList ? !(typeof json[key][0] == 'object') : true
           let childType = this.listTypeMapper(key, json[key])
           property = {
             name:propertyKey,
@@ -111,10 +119,12 @@ export default {
           };
           properties.push(property);
           if(typeof json[key] == 'object' && !Array.isArray(json[key]) && json[key] != null){
-            this.convertJsonToClass(json);
-          }else if(Array.isArray(json[key]) && json[key].length > 0){
-            if(typeof json[key][0] == 'object'){
+            if(Array.isArray(json[key]) && typeof json[key][0] == 'object'){
               this.convertArrayObjectToClass(key, json[key]);
+            }else{
+              let loopJson = (this.loopIndex == 0) ? json : json[key]
+              this.convertJsonToClass(loopJson);
+              this.loopIndex++
             }
           }
         });
@@ -162,8 +172,8 @@ export default {
           constructors += `\t\trequired this.${property.name},`
           
           /// TODO : add a logic to add list / non-primitive object adapter
-          if(item.isList){
-            if(!item.isPrimitive){
+          if(property.isList){
+            if(!property.isPrimitive){
               fromJson += `\t\t${property.name} : List<${property.childType}>.from(json['${property.originalKey}'].map((json)=>${property.childType}.fromJson(json))),\n`
               toJson += `\t\tdata['${property.originalKey}'] = ${property.name}.map((model) => model.toJson()).toList();`
             }else{
@@ -185,6 +195,25 @@ export default {
       let classTemplate = `class ${className} {\n${constructorTemplate}\n${fromJsonTemplate}\n${toJsonTemplate}\n}`
       return classTemplate;
     },
+    copyClass(item){
+      let text = this.showAsModel(item)
+      navigator.clipboard.writeText(text).then(function(){
+        alert(`Class ${item.className} copied`);
+      })
+    },
+    download(item) {
+        let text = this.showAsModel(item)
+        const file = new Blob([text], {type: 'text/plain'})
+        let a = document.createElement('a'),url = URL.createObjectURL(file);
+        a.href = url;
+        a.download = `${item.className}.dart`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function() {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);  
+        }, 0); 
+    }
     // prettyFormat() {
     //     // reset error
     //     this.jsonerror = "";
