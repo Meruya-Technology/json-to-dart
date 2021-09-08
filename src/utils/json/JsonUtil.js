@@ -4,9 +4,10 @@ var JsonUtil = {
     retrieveClass(){return classes},
     initClass(rawJson, className){
         classes = []
-        let parsedJson = JSON.parse(rawJson)
+        let parsedJson = this.checkAndParse(rawJson)
         if(parsedJson!=null){
-            let modifiedClassName = TextUtil.capital(className);
+            // let modifiedClassName = TextUtil.capital(className);
+            let modifiedClassName = TextUtil.capital(className)
             classes.push({
                 className:TextUtil.capital(modifiedClassName),
                 properties:this.createClassObject(parsedJson),
@@ -105,7 +106,8 @@ var JsonUtil = {
                 this.jsonToClass(json);
             }
         }
-    }
+    },
+    
 }
 
 export default JsonUtil
