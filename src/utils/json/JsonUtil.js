@@ -6,14 +6,15 @@ var JsonUtil = {
         classes = []
         let parsedJson = this.checkAndParse(rawJson)
         if(parsedJson!=null){
-            // let modifiedClassName = TextUtil.capital(className);
             let modifiedClassName = TextUtil.capital(className)
             classes.push({
-                className:TextUtil.capital(modifiedClassName),
+                className:modifiedClassName,
                 properties:this.createClassObject(parsedJson),
                 child:parsedJson,
+                key:modifiedClassName
             });
         }
+        console.log(classes)
     },
     getKeys(json){
         let keys = Object.keys(json);
@@ -23,11 +24,15 @@ var JsonUtil = {
         let keys = this.getKeys(json)
         keys.forEach(key => {
             if(typeof json[key] == 'object' && !Array.isArray(json[key]) && json[key]!= null){
-                classes.push({
-                    className:TextUtil.capital(key),
-                    properties:this.createClassObject(json[key]),
-                    child:json[key],
-                });
+                let duplicated = classes.some(c => c.key == key)
+                if(!duplicated){
+                    classes.push({
+                        className:TextUtil.capital(key),
+                        properties:this.createClassObject(json[key]),
+                        child:json[key],
+                        key:key
+                    });
+                }
             }
         });
     },
@@ -37,6 +42,7 @@ var JsonUtil = {
             className:TextUtil.capital(parentKey),
             properties:this.createClassObject(parsedJson),
             child:parsedJson,
+            key:parentKey
         });
     },
     objectTypeMapper(key, value){
@@ -50,7 +56,7 @@ var JsonUtil = {
             case 'object':
                 if(Array.isArray(value)){
                     let collectionType = (value.length > 0) ? this.collectionTypeMapper(key, value): 'Null'
-                    return collectionType
+                    return `List<${collectionType}>`
                 }else if(value == null){
                     return 'Null'
                 }else{
@@ -61,9 +67,12 @@ var JsonUtil = {
         }
     },
     collectionTypeMapper(key, value){
-        let firstArray = value[0];
-        let childType = (value.length > 0) ? this.objectTypeMapper(key, firstArray): 'Null'
-        return `List<${childType}>`;
+        let childType = "";
+        if(value!=null){
+            let firstArray = value[0];
+            childType = this.objectTypeMapper(key, firstArray)
+        }
+        return `${childType}`;
     },
     checkAndParse(rawJson){
         try {
@@ -101,7 +110,7 @@ var JsonUtil = {
     repeat(json, key){
         if(typeof json[key] == 'object'){
             if(Array.isArray(json[key]) && typeof json[key][0] == 'object'){
-                this.arrayToClass(key, json[key]);
+                this.arrayToClass(key, json[key])
             }else{
                 this.jsonToClass(json);
             }
