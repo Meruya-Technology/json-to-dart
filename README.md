@@ -1,5 +1,11 @@
 # json-to-dart
 
+## Project deploy
+Run this command to deploy to Meruya Technology Github Pages, whenevere there is an updates.
+```
+./deploy.sh
+```
+
 ## Project setup
 ```
 npm install
@@ -20,6 +26,5 @@ npm run build
 npm run lint
 ```
 
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
-# json-to-dart
+# Buy Us A Coffee
+https://saweria.co/meruyatechnology
