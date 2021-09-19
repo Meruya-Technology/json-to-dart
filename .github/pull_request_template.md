@@ -20,7 +20,7 @@ Issue ID : <!-- Issue Link -->
 <!-- Put an `x` in the boxes that apply. Use `~~` around the checklist items that are not applicable to this PR. Examples: 
 - [x] I've done this - ~~[ ] I don't need this~~ --> 
 
-- [ ] This code already follow Dart Effective Guideline 
+- [ ] This code already follow Organization Guideline 
 - [ ] This PR is self-reviewed before created 
 - [ ] Added inline documentation on each update 
 - [ ] I have made corresponding changes to the documentation 
